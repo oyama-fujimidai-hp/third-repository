@@ -161,22 +161,19 @@
         return { user, doctor, manager };
       };
 
-      const analyzeWithGemini = async (text) => {
+      const analyzeWithGemini = async (base64Image) => {
         if (!apiKey) return null;
         const prompt = `
-              以下のテキストは精神科訪問看護報告書の内容です。
-              このテキストから以下の情報を抽出し、JSON形式のみで出力してください。
+              この画像は精神科訪問看護報告書です。
+              画像から以下の情報を抽出し、JSON形式のみで出力してください。
               
               抽出ルール:
-              1. date: 本文中の最も新しい日付を探し、YYYYMMDD形式に変換する。
-              2. user: 利用者氏名。
-              3. doctor: 報告先の医師名。
-              4. manager: 事業所の管理者氏名。
+              1. date: 本文中の最も新しい日付（作成日や報告日）を探し、YYYYMMDD形式に変換する。
+              2. user: 利用者氏名（様、殿などの前にある名前）。
+              3. doctor: 報告先の医師名（先生、様などの前にある名前）。
+              4. manager: 事業所の管理者名。
 
               出力例: {"date": "20240101", "user": "山田太郎", "doctor": "佐藤医師", "manager": "鈴木"}
-
-              テキスト:
-              ${text.substring(0, 15000)}
             `;
 
         try {
@@ -184,7 +181,17 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }]
+              contents: [{
+                parts: [
+                  { text: prompt },
+                  {
+                    inline_data: {
+                      mime_type: "image/jpeg",
+                      data: base64Image
+                    }
+                  }
+                ]
+              }]
             })
           });
           const data = await response.json();
@@ -202,16 +209,32 @@
         try {
           const arrayBuffer = await file.arrayBuffer();
           const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+          // 1ページ目を取得
+          const page = await pdf.getPage(1);
+          const viewport = page.getViewport({ scale: 2.0 }); // 2倍でレンダリング（OCR精度向上のため）
+
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+
+          await page.render({ canvasContext: context, viewport: viewport }).promise;
+
+          // 画像データ（Base64）に変換
+          const imageData = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+
+          // 正規表現用のテキスト抽出も並行して行う（フォールバック用）
           let fullText = "";
           for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
+            const p = await pdf.getPage(i);
+            const textContent = await p.getTextContent();
             fullText += textContent.items.map(item => item.str).join(" ") + "\n";
           }
 
           let resDate, resUser, resDoctor, resManager, usedAI = false;
           if (apiKey) {
-            const aiResult = await analyzeWithGemini(fullText);
+            const aiResult = await analyzeWithGemini(imageData);
             if (aiResult) {
               resDate = aiResult.date || "";
               resUser = aiResult.user || "";
@@ -238,6 +261,7 @@
             usedAI: usedAI
           };
         } catch (error) {
+          console.error("Process error:", error);
           return { id: Math.random().toString(36).substr(2, 9), originalName: file.name, error: true };
         }
       };
