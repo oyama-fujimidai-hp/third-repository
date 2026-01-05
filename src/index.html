@@ -305,7 +305,7 @@
         const header = "元のファイル名\t作成されたファイル名";
         const rows = files.map(f => {
           const newName = `${f.date}_${f.user}_${f.doctor}_${f.manager}`.replace(/\s+/g, '');
-          return `${f.originalName}\t${newName}.pdf`;
+          return `${f.originalName}\t${newName}`;
         }).join("\n");
         navigator.clipboard.writeText(`${header}\n${rows}`).then(() => {
           setCopyStatus('copied');
@@ -464,7 +464,7 @@
                         h('td', { className: "p-5" },
                           h('div', { className: "flex flex-col gap-1" },
                             h('code', { className: `text-xs p-2 rounded-lg block break-all font-bold ${isDuplicate ? 'bg-red-100 text-red-700 ring-2 ring-red-500' : 'bg-slate-100 text-slate-600'}` },
-                              outputName + ".pdf"
+                              outputName
                             ),
                             isDuplicate && h('span', { className: "text-[10px] text-red-600 font-bold flex items-center gap-1" },
                               h(Icon, { name: 'AlertCircle', className: "w-3 h-3" }),
