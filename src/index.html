@@ -371,13 +371,14 @@
                 placeholder: "APIキー (AIza...)",
                 className: "p-3 rounded-xl border-2 border-slate-200 focus:border-blue-500 outline-none w-full transition-all"
               }),
-              h('input', {
-                type: "text",
+              h('select', {
                 value: modelName,
                 onChange: (e) => setModelName(e.target.value),
-                placeholder: "モデル名",
-                className: "p-3 rounded-xl border-2 border-slate-200 focus:border-blue-500 outline-none w-full transition-all"
-              })
+                className: "p-3 rounded-xl border-2 border-slate-200 focus:border-blue-500 outline-none w-full transition-all bg-white cursor-pointer"
+              },
+                h('option', { value: 'gemini-3-flash-preview' }, 'Gemini 3 Flash Preview'),
+                h('option', { value: 'gemini-3-pro-preview' }, 'Gemini 3 Pro Preview')
+              )
             ),
             h('p', { className: "text-xs text-slate-400 mt-2" }, "※APIキーを入力すると、より正確な解析が可能になります。")
           ),
